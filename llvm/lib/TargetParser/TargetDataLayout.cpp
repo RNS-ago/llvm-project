@@ -297,7 +297,7 @@ static std::string computeRISCVDataLayout(const Triple &TT, StringRef ABIName) {
   Ret += "-m:e";
 
   // Pointer and integer sizes.
-  if (TT.isRISCV64()) {
+  if (TT.isRISCV64() || TT.isTRISCV64()) {
     Ret += "-p:64:64-i64:64-i128:128";
     Ret += "-n32:64";
   } else {
@@ -594,6 +594,7 @@ std::string Triple::computeDataLayout(StringRef ABIName) const {
     return computeAMDDataLayout(*this);
   case Triple::riscv32:
   case Triple::riscv64:
+  case Triple::triscv64:
   case Triple::riscv32be:
   case Triple::riscv64be:
     return computeRISCVDataLayout(*this, ABIName);
