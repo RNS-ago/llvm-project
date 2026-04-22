@@ -777,9 +777,13 @@ def LBU : Load_ri<0b100, "lbu">, Sched<[WriteLDB, ReadMemBase]>;
 def LHU : Load_ri<0b101, "lhu">, Sched<[WriteLDH, ReadMemBase]>;
 }
 
-def SB : Store_rri<0b000, "sb">, Sched<[WriteSTB, ReadStoreData, ReadMemBase]>;
-def SH : Store_rri<0b001, "sh">, Sched<[WriteSTH, ReadStoreData, ReadMemBase]>;
-def SW : Store_rri<0b010, "sw">, Sched<[WriteSTW, ReadStoreData, ReadMemBase]>;
+def ST : Store_rri<0b000, "st">, Sched<[WriteSTB, ReadStoreData, ReadMemBase]>;
+
+let isCodeGenOnly = 1 in {
+  def SB : Store_rri<0b000, "sb">, Sched<[WriteSTB, ReadStoreData, ReadMemBase]>;
+  def SH : Store_rri<0b001, "sh">, Sched<[WriteSTH, ReadStoreData, ReadMemBase]>;
+  def SW : Store_rri<0b010, "sw">, Sched<[WriteSTW, ReadStoreData, ReadMemBase]>;
+}
 
 // ADDI isn't always rematerializable, but isReMaterializable will be used as
 // a hint which is verified in isReMaterializableImpl.
@@ -800,11 +804,16 @@ def ANDI  : ALU_ri<0b111, "andi">;
 
 def SLLI : Shift_ri<0b00000, 0b001, "slli">,
            Sched<[WriteShiftImm, ReadShiftImm]>;
-def SRLI : Shift_ri<0b00000, 0b101, "srli">,
+           
+let isCodeGenOnly = 1 in {
+	def SRLI : Shift_ri<0b00000, 0b101, "srli">,
+    	       Sched<[WriteShiftImm, ReadShiftImm]>;
+	def SRAI : Shift_ri<0b01000, 0b101, "srai">,
+    	       Sched<[WriteShiftImm, ReadShiftImm]>;
+}
+def SRPI : Shift_ri<0b00000, 0b101, "srpi">,
            Sched<[WriteShiftImm, ReadShiftImm]>;
-def SRAI : Shift_ri<0b01000, 0b101, "srai">,
-           Sched<[WriteShiftImm, ReadShiftImm]>;
-
+           
 def ADD  : ALU_rr<0b0000000, 0b000, "add", Commutable=1>,
            Sched<[WriteIALU, ReadIALU, ReadIALU]>;
 def SUB  : ALU_rr<0b0100000, 0b000, "sub">,
@@ -819,10 +828,16 @@ def SLTU : ALU_rr<0b0000000, 0b011, "sltu">,
 }
 def XOR  : ALU_rr<0b0000000, 0b100, "xor", Commutable=1>,
            Sched<[WriteIALU, ReadIALU, ReadIALU]>;
-def SRL  : ALU_rr<0b0000000, 0b101, "srl">,
+           
+let isCodeGenOnly = 1 in {
+	def SRL  : ALU_rr<0b0000000, 0b101, "srl">,
+    	       Sched<[WriteShiftReg, ReadShiftReg, ReadShiftReg]>;
+	def SRA  : ALU_rr<0b0100000, 0b101, "sra">,
+    	       Sched<[WriteShiftReg, ReadShiftReg, ReadShiftReg]>;
+}
+def SRP  : ALU_rr<0b0100000, 0b101, "srp">,
            Sched<[WriteShiftReg, ReadShiftReg, ReadShiftReg]>;
-def SRA  : ALU_rr<0b0100000, 0b101, "sra">,
-           Sched<[WriteShiftReg, ReadShiftReg, ReadShiftReg]>;
+           
 def OR   : ALU_rr<0b0000000, 0b110, "or", Commutable=1>,
            Sched<[WriteIALU, ReadIALU, ReadIALU]>;
 def AND  : ALU_rr<0b0000000, 0b111, "and", Commutable=1>,

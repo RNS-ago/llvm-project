@@ -53,11 +53,37 @@ private:
           MI.setDesc(TII->get(RISCV::SLT));
           return true;
     }
+    case RISCV::SLLW: {
+          MI.setDesc(TII->get(RISCV::SLL));
+          return true;
+    }
+    case RISCV::SRL:
+    case RISCV::SRLW:
+    case RISCV::SRA:
+    case RISCV::SRAW:{
+              MI.setDesc(TII->get(RISCV::SRP));
+              return true;
+        }
 
     // Immediat ALU
     case RISCV::ADDIW: {
       MI.setDesc(TII->get(RISCV::ADDI));
       return true;
+    }
+    case RISCV::SLTIU: {
+          MI.setDesc(TII->get(RISCV::SLTI));
+          return true;
+    }
+    case RISCV::SLLIW: {
+          MI.setDesc(TII->get(RISCV::SLLI));
+          return true;
+    }
+    case RISCV::SRLI:
+    case RISCV::SRLIW:
+    case RISCV::SRAI:
+    case RISCV::SRAIW:{
+          MI.setDesc(TII->get(RISCV::SRPI));
+          return true;
     }
 
 
@@ -77,12 +103,35 @@ private:
     case RISCV::SH:
     case RISCV::SW:
     case RISCV::SD: {
-          MI.setDesc(TII->get(RISCV::SB)); // ST equivaletn
+          MI.setDesc(TII->get(RISCV::ST)); // Polymorphic Store
           return true;
     }
 
 
 
+    // Multiplication Extension
+    case RISCV::MULW: {
+    	MI.setDesc(TII->get(RISCV::MUL));
+    	return true;
+    }
+    case RISCV::MULH:
+    case RISCV::MULHU:
+    case RISCV::MULHSU: {
+    		MI.setDesc(TII->get(RISCV::MULH));
+    		return true;
+    }
+    case RISCV::DIVU:
+    case RISCV::DIVW:
+    case RISCV::DIVUW: {
+    	MI.setDesc(TII->get(RISCV::DIV));
+    	return true;
+    }
+    case RISCV::REMU:
+    case RISCV::REMW:
+    case RISCV::REMUW: {
+    	MI.setDesc(TII->get(RISCV::REM));
+    	return true;
+    }
 
     default:
       return false;
