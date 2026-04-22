@@ -495,6 +495,9 @@ private:
   SDValue getDynamicTLSAddr(GlobalAddressSDNode *N, SelectionDAG &DAG) const;
   SDValue getTLSDescAddr(GlobalAddressSDNode *N, SelectionDAG &DAG) const;
 
+  SDValue lowerCAST(SDValue Op, SelectionDAG &DAG) const;
+  unsigned getTypeTag(EVT VT, bool IsSigned) const;
+
   SDValue lowerConstantFP(SDValue Op, SelectionDAG &DAG) const;
   SDValue lowerGlobalAddress(SDValue Op, SelectionDAG &DAG) const;
   SDValue lowerBlockAddress(SDValue Op, SelectionDAG &DAG) const;

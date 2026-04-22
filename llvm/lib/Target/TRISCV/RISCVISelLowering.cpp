@@ -313,6 +313,21 @@ RISCVTargetLowering::RISCVTargetLowering(const TargetMachine &TM,
                    MVT::i1, Promote);
 
   // TODO: add all necessary setOperationAction calls.
+
+  // TRISCV truncate lowering custom behaviour
+  setOperationAction(ISD::TRUNCATE, MVT::i8,  Custom);
+  setOperationAction(ISD::TRUNCATE, MVT::i16, Custom);
+  //setOperationAction(ISD::TRUNCATE, MVT::i32, Custom);
+
+  setOperationAction(ISD::SIGN_EXTEND, MVT::i16, Custom);
+  setOperationAction(ISD::SIGN_EXTEND, MVT::i32, Custom);
+  setOperationAction(ISD::SIGN_EXTEND, MVT::i64, Custom);
+
+  setOperationAction(ISD::ZERO_EXTEND, MVT::i16, Custom);
+  setOperationAction(ISD::ZERO_EXTEND, MVT::i32, Custom);
+  setOperationAction(ISD::ZERO_EXTEND, MVT::i64, Custom);
+
+
   setOperationAction(ISD::DYNAMIC_STACKALLOC, XLenVT, Custom);
 
   setOperationAction(ISD::BR_JT, MVT::Other, Expand);
@@ -7953,10 +7968,14 @@ SDValue RISCVTargetLowering::LowerOperation(SDValue Op,
     SDValue BSwap = DAG.getNode(ISD::BSWAP, DL, VT, Op.getOperand(0));
     return DAG.getNode(RISCVISD::BREV8, DL, VT, BSwap);
   }
+
+  //TRISCV custom cast lowering
   case ISD::TRUNCATE:
+    if (!Op.getSimpleValueType().isVector())
+      return Op;
+    return lowerVectorTruncLike(Op, DAG);
   case ISD::TRUNCATE_SSAT_S:
   case ISD::TRUNCATE_USAT_U:
-    // Only custom-lower vector truncates
     if (!Op.getSimpleValueType().isVector())
       return Op;
     return lowerVectorTruncLike(Op, DAG);
@@ -7967,6 +7986,8 @@ SDValue RISCVTargetLowering::LowerOperation(SDValue Op,
       return lowerVectorMaskExt(Op, DAG, /*ExtVal*/ 1);
     if (Op.getValueType().isScalableVector())
       return Op;
+    if (!Op.getSimpleValueType().isVector())
+      return lowerCAST(Op, DAG);
     return lowerToScalableOp(Op, DAG);
   case ISD::SIGN_EXTEND:
     if (Op.getOperand(0).getValueType().isVector() &&
@@ -7974,7 +7995,10 @@ SDValue RISCVTargetLowering::LowerOperation(SDValue Op,
       return lowerVectorMaskExt(Op, DAG, /*ExtVal*/ -1);
     if (Op.getValueType().isScalableVector())
       return Op;
+    if (!Op.getSimpleValueType().isVector())
+      return lowerCAST(Op, DAG);
     return lowerToScalableOp(Op, DAG);
+
   case ISD::SPLAT_VECTOR_PARTS:
     return lowerSPLAT_VECTOR_PARTS(Op, DAG);
   case ISD::INSERT_VECTOR_ELT:
@@ -9063,6 +9087,32 @@ SDValue RISCVTargetLowering::LowerOperation(SDValue Op,
     return lowerPARTIAL_REDUCE_MLA(Op, DAG);
   }
 }
+
+SDValue RISCVTargetLowering::lowerCAST(SDValue Op,
+                                        SelectionDAG &DAG) const {
+  SDLoc DL(Op);
+  EVT DstVT = Op.getValueType();
+  SDValue Src = Op.getOperand(0);
+  MVT XLenVT = Subtarget.getXLenVT();
+
+  bool IsSigned = (Op.getOpcode() == ISD::SIGN_EXTEND);
+  unsigned Tag = getTypeTag(DstVT, IsSigned);
+  SDValue TagImm = DAG.getTargetConstant(Tag, DL, XLenVT);
+
+  return DAG.getNode(RISCVISD::CAST_TAG, DL, XLenVT, Src, TagImm);
+}
+
+
+unsigned RISCVTargetLowering::getTypeTag(EVT VT, bool IsSigned) const {
+  switch (VT.getSimpleVT().SimpleTy) {
+  case MVT::i8:  return IsSigned ? 0b000 : 0b001;
+  case MVT::i16: return IsSigned ? 0b010 : 0b011;
+  case MVT::i32: return IsSigned ? 0b100 : 0b101;
+  case MVT::i64: return IsSigned ? 0b110 : 0b111;
+  default: llvm_unreachable("unsupported type");
+  }
+}
+
 
 SDValue RISCVTargetLowering::emitFlushICache(SelectionDAG &DAG, SDValue InChain,
                                              SDValue Start, SDValue End,
@@ -14939,9 +14989,20 @@ void RISCVTargetLowering::ReplaceNodeResults(SDNode *N,
                                              SmallVectorImpl<SDValue> &Results,
                                              SelectionDAG &DAG) const {
   SDLoc DL(N);
+  MVT XLenVT = Subtarget.getXLenVT();
+
   switch (N->getOpcode()) {
   default:
     llvm_unreachable("Don't know how to custom type legalize this operation!");
+  case ISD::TRUNCATE: {
+      EVT DstVT = N->getValueType(0);
+      SDValue Src = N->getOperand(0);
+      unsigned Tag = getTypeTag(DstVT, /*IsSigned=*/false);
+      SDValue TagImm = DAG.getTargetConstant(Tag, DL, XLenVT);
+      SDValue Cast = DAG.getNode(RISCVISD::CAST_TAG, DL, XLenVT, Src, TagImm);
+      Results.push_back(Cast);
+      return;
+    }
   case ISD::STRICT_FP_TO_SINT:
   case ISD::STRICT_FP_TO_UINT:
   case ISD::FP_TO_SINT:
