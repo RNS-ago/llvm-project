@@ -620,7 +620,8 @@ void RISCVPassConfig::addMachineSSAOptimization() {
 
   TargetPassConfig::addMachineSSAOptimization();
 
-  if (TM->getTargetTriple().isRISCV64()) {
+  const Triple &TT = TM->getTargetTriple();
+  if (TT.isRISCV64() || TT.isTRISCV64()) {
     addPass(createRISCVOptWInstrsPass());
   }
 }
